@@ -6,21 +6,26 @@ import java.util.HashMap;
 
 public class Main extends JFrame {
     int width = 800, height = 800;
-    public static Population schedules;
     public static GraphicsPanel panel;
-    public static Timer t;
+    public static Timer[] timers;
+    private static ArrayList<Population> populations, populationStarter;
+    private static int numIslands;
     public Main(){
         super("Scheduler");
         setSize(width, height);
         setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         setVisible(true);
-        panel = new GraphicsPanel(width, height);
+        panel = new GraphicsPanel(width, height, this);
         add(panel);
         panel.repaint();
 
     }
     public static void main(String[] args) {
         Schedule.numWeeks = 26;
+        numIslands = 5;
+        populations = new ArrayList<>();
+        populationStarter = new ArrayList<>();
+        timers = new Timer[numIslands];
 //        int numDocs = 11;
 //        ArrayList<Integer> temp = new ArrayList<>();
 //        HashMap<Integer, Integer> tempRequiredList = new HashMap<>();
@@ -72,22 +77,41 @@ public class Main extends JFrame {
     }
 
     public static void startTimer(){
-        schedules = new Population(200);
-        schedules.setPanel(panel);
 
-        t = new Timer(20, new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if(schedules.getNoChange() > 500 || schedules.getLastCost() == 200) {
-                    schedules.printBestSchedule();
-                    t.stop();
+        for (int i = 0; i < numIslands; i++) {
+            Population p = new Population(200);
+            populations.add(p);
+            populationStarter.add(p);
+
+            Timer t = new Timer(20, new ActionListener() {
+                Population pop = populationStarter.remove(0);
+                final int lowestScore = 100 * (Schedule.numWeeks % Schedule.participantHashMap.size());
+                @Override
+                public void actionPerformed(ActionEvent e) {
+
+                    if(pop.getNoChange() > 500 || pop.getLastCost() == lowestScore) {
+                        pop.printBestSchedule();
+                        for (Timer timer : timers) {
+                            timer.stop();
+                        }
+                    }
+                    else{
+                        if(pop.getGeneration() % 10 == 0){
+                            pop.mate(populations.get((int)(Math.random() * populations.size())));
+                        }
+                        pop.nextGen();
+                    }
+
                 }
-                else
-                    schedules.nextGen();
-            }
-        });
-        t.start();
+            });
+            timers[i] = t;
+            t.start();
+        }
+
+        
     }
+
+
 
 
 }

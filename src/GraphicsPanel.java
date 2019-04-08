@@ -1,13 +1,16 @@
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.Timer;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.net.URL;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
@@ -19,12 +22,12 @@ import java.util.concurrent.TimeUnit;
 public class GraphicsPanel extends JPanel {
 
     private int generation = 0 , score = 100000, w, h;
-    private GregorianCalendar calendar;
+    private static GregorianCalendar calendar;
+    private CalendarChart mainCalendar;
     private enum State {
         START, ACTIVE
     }
-    private State curr_state;
-    public GraphicsPanel(int w, int h){
+    public GraphicsPanel(int w, int h, JFrame parent){
         super(null);
         setSize(w, h);
         this.w = w;
@@ -41,23 +44,29 @@ public class GraphicsPanel extends JPanel {
         this.score = score;
     }
 
-    private void addDoctors(int w, int h){
+    private void addDoctors(int w, int h, CalendarChart calendar){
         //doctorsPanel
         JPanel doctorsPanel = new JPanel(null);
         add(doctorsPanel);
-        doctorsPanel.setBounds(0, 40, w/5, h - 80);
+        doctorsPanel.setBounds(0, h - h/8, w, h/8);
         doctorsPanel.setVisible(true);
         doctorsPanel.setBorder(BorderFactory.createLineBorder(Color.black, 1));
         doctorsPanel.setBackground(Color.white);
+
+        //infopanel
+        JPanel infoPanel = new JPanel(null);
+        add(infoPanel);
+        infoPanel.setVisible(false);
+        infoPanel.setBackground(Color.white);
 
         //Add buttons for each doctor
         int numDocs = Schedule.participantHashMap.keySet().size();
         int count = 0;
         for(String s : Schedule.participantHashMap.keySet()){
-            ParticipantButton button = new ParticipantButton(Schedule.participantHashMap.get(s));
+            ParticipantButton button = new ParticipantButton(Schedule.participantHashMap.get(s), infoPanel, calendar);
             doctorsPanel.add(button);
-            int height = (h-100)/numDocs;
-            button.setBounds(0, count * height + 10, w/5, height);
+            int width = w/numDocs;
+            button.setBounds(count * width + 10, 0, width, 80);
             count++;
         }
 
@@ -68,7 +77,6 @@ public class GraphicsPanel extends JPanel {
 
     private void setState(State state){
         removeAll();
-        curr_state = state;
         switch(state){
             case START:
                 //Start Screen
@@ -173,8 +181,6 @@ public class GraphicsPanel extends JPanel {
                     date[i] = Integer.parseInt(text);
                  }
                  calendar = new GregorianCalendar(date[2], date[0] - 1, date[1]);
-                 System.out.println(calendar.getTime());
-
                  //read input file for doctor schedules
                 File schedule = fileChooser.getSelectedFile();
                 readFile(schedule);
@@ -192,21 +198,29 @@ public class GraphicsPanel extends JPanel {
     }
 
     private void buildActiveScreen(int w, int h){
+        mainCalendar = new CalendarChart(0, 100, w,  h * 31/40);
+        add(mainCalendar);
+
         //add doctor panel
-        addDoctors(w, h);
+        addDoctors(w, h, mainCalendar);
 
         //add preliminary genAlg display panel
         JPanel genPanel = new JPanel(){
             @Override
             public void paintComponent(Graphics g){
+                super.paintComponent(g);
                 Graphics2D g2 = (Graphics2D)g;
-                g2.drawString("Generation: " + generation, 0, 20);
-                g2.drawString("Score: " + score, 0, 40);
+                g2.drawString("Generation: " + generation, 0, 40);
+                g2.drawString("Score: " + score, 0, 60);
             }
         };
-        genPanel.setBounds(w - 200, 20, 180, 40);
+        genPanel.setBounds(0, 0, w, h/10);
         add(genPanel);
 
+
+
+        revalidate();
+        repaint();
     }
 
     private void readFile(File file) throws Exception {
@@ -269,4 +283,37 @@ public class GraphicsPanel extends JPanel {
         return ((int)diff)/7;
     }
 
+    public static String interpretWeek(int week){
+        /*--------------------Formatter--------------------*/
+        SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy", Locale.US);
+
+        /*--------------------Make new calendar--------------------*/
+        Calendar cal = (Calendar)calendar.clone();
+        cal.add(Calendar.DATE, week * 7); //add days to start
+        String s1 = sdf.format(cal.getTime());
+        cal.add(Calendar.DATE, 6); //get end of week
+        String s2 = sdf.format(cal.getTime());
+
+        return s1 + " - " + s2;
+    }
+
+    private static URL buildImageFile(String file){
+        ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+        return classLoader.getResource(  file + ".png");
+    }
+
+    public static BufferedImage readImg(String file){
+        BufferedImage ans = null;
+        try {
+            URL url = buildImageFile(file);
+            ans =  ImageIO.read(url);
+        }catch(IOException e){
+            e.printStackTrace();
+        }
+        return ans;
+    }
+
+    public CalendarChart getMainCalendar(){
+        return mainCalendar;
+    }
 }

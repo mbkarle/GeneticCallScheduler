@@ -7,7 +7,7 @@ import java.util.HashMap;
 public class Population {
 
     private ArrayList<Schedule> chromosomes = new ArrayList<>();
-    private double elitism, lastCost = Integer.MAX_VALUE;
+    private double elitism, lastCost = (int)Math.pow(2, 30);
     private int size, generation = 0, noChange = 0;
     private GraphicsPanel panel = Main.panel;
     public Population(int size){
@@ -75,6 +75,7 @@ public class Population {
         for(String s : participants.keySet()){
             participants.get(s).reset();
         }
+        populateCalendar(best);
         for (int i = 0; i < schedule.size(); i++) {
             Participant scheduled = participants.get(schedule.get(i));
             if(scheduled.hasConflict(i))
@@ -106,7 +107,37 @@ public class Population {
 
     }
 
+    private void populateCalendar(Schedule best){
+        ArrayList<WeekBox> weekBoxes = panel.getMainCalendar().getWeekBoxes();
+        ArrayList<String> schedule = best.getSchedule();
+        for (int i = 0; i < schedule.size(); i++) {
+            Schedule.participantHashMap.get(schedule.get(i)).addAssigned(i);
+            weekBoxes.get(i).setAssignedName(schedule.get(i));
+        }
+
+        panel.repaint();
+    }
+
+    public void mate(Population other){
+        sort();
+        for (int i = 0; i < chromosomes.size()/10; i++) {
+            if(Math.random() < .8){
+                Schedule temp = chromosomes.get(i);
+                chromosomes.set(i, other.getChromosomes().get(i));
+                other.getChromosomes().set(i, temp);
+            }
+        }
+    }
+
     public void setPanel(GraphicsPanel panel) {
         this.panel = panel;
+    }
+
+    public ArrayList<Schedule> getChromosomes() {
+        return chromosomes;
+    }
+
+    public int getGeneration() {
+        return generation;
     }
 }
